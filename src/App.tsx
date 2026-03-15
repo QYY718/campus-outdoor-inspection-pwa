@@ -1,0 +1,646 @@
+import { useEffect, useState } from "react";
+import "./styles.css";
+import { getPhoto, savePhoto } from "./db";
+
+type ReportStatus = "Pending" | "In Progress" | "Resolved";
+
+type ReportLocation = {
+  latitude: number | null;
+  longitude: number | null;
+  locationError: string;
+  mapUrl: string;
+};
+
+type Report = {
+  id: number;
+  title: string;
+  category: string;
+  description: string;
+  status: ReportStatus;
+  createdAt: string;
+  location: ReportLocation;
+  hasPhoto: boolean;
+  photo?: string;
+};
+
+type BeforeInstallPromptEvent = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
+};
+
+const emptyLocation: ReportLocation = {
+  latitude: null,
+  longitude: null,
+  locationError: "",
+  mapUrl: "",
+};
+
+function ReportPhoto({ report }: { report: Report }) {
+  const [photoUrl, setPhotoUrl] = useState<string>("");
+
+  useEffect(() => {
+    let active = true;
+    let objectUrlToRevoke: string | null = null;
+
+    async function loadPhoto() {
+      if (report.photo) {
+        setPhotoUrl(report.photo);
+        return;
+      }
+
+      if (!report.hasPhoto) {
+        setPhotoUrl("");
+        return;
+      }
+
+      const url = await getPhoto(report.id);
+
+      if (!active) return;
+
+      if (url) {
+        objectUrlToRevoke = url;
+        setPhotoUrl(url);
+      } else {
+        setPhotoUrl("");
+      }
+    }
+
+    loadPhoto();
+
+    return () => {
+      active = false;
+      if (objectUrlToRevoke) {
+        URL.revokeObjectURL(objectUrlToRevoke);
+      }
+    };
+  }, [report.id, report.hasPhoto, report.photo]);
+
+  if (!photoUrl) return null;
+
+  return (
+    <div className="report-photo-box">
+      <img src={photoUrl} alt={report.title} className="report-photo" />
+    </div>
+  );
+}
+
+export default function App() {
+  const [title, setTitle] = useState<string>("");
+  const [category, setCategory] = useState<string>("Lighting");
+  const [description, setDescription] = useState<string>("");
+  const [status, setStatus] = useState<ReportStatus>("Pending");
+
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string>("");
+  const [existingHasPhoto, setExistingHasPhoto] = useState<boolean>(false);
+  const [removeExistingPhoto, setRemoveExistingPhoto] =
+    useState<boolean>(false);
+
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
+
+  const [installPromptEvent, setInstallPromptEvent] =
+    useState<BeforeInstallPromptEvent | null>(null);
+  const [isInstalled, setIsInstalled] = useState<boolean>(false);
+
+  const [reports, setReports] = useState<Report[]>(() => {
+    const savedReports = localStorage.getItem("reports");
+
+    if (!savedReports) return [];
+
+    const parsedReports = JSON.parse(savedReports);
+
+    return parsedReports.map(
+      (report: Partial<Report> & { photo?: string }) => ({
+        id: report.id ?? Date.now(),
+        title: report.title ?? "",
+        category: report.category ?? "Other",
+        description: report.description ?? "",
+        status: (report.status as ReportStatus) ?? "Pending",
+        createdAt: report.createdAt ?? new Date().toLocaleString(),
+        location: report.location ?? {
+          latitude: null,
+          longitude: null,
+          locationError: "",
+          mapUrl: "",
+        },
+        hasPhoto: report.hasPhoto ?? Boolean(report.photo),
+        photo: report.photo ?? "",
+      })
+    );
+  });
+
+  useEffect(() => {
+    localStorage.setItem("reports", JSON.stringify(reports));
+  }, [reports]);
+
+  useEffect(() => {
+    function handleOnline() {
+      setIsOnline(true);
+    }
+
+    function handleOffline() {
+      setIsOnline(false);
+    }
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
+
+  useEffect(() => {
+    function handleBeforeInstallPrompt(e: Event) {
+      e.preventDefault();
+      setInstallPromptEvent(e as BeforeInstallPromptEvent);
+    }
+
+    function handleAppInstalled() {
+      setIsInstalled(true);
+      setInstallPromptEvent(null);
+    }
+
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    window.addEventListener("appinstalled", handleAppInstalled);
+
+    return () => {
+      window.removeEventListener(
+        "beforeinstallprompt",
+        handleBeforeInstallPrompt
+      );
+      window.removeEventListener("appinstalled", handleAppInstalled);
+    };
+  }, []);
+
+  async function handleInstallClick() {
+    if (!installPromptEvent) return;
+
+    await installPromptEvent.prompt();
+    const choice = await installPromptEvent.userChoice;
+
+    if (choice.outcome === "accepted") {
+      setInstallPromptEvent(null);
+    }
+  }
+
+  function updateReportLocation(id: number, location: ReportLocation) {
+    setReports((currentReports) =>
+      currentReports.map((report) =>
+        report.id === id ? { ...report, location } : report
+      )
+    );
+  }
+
+  function getCurrentLocation(id: number) {
+    if (!navigator.geolocation) {
+      updateReportLocation(id, {
+        latitude: null,
+        longitude: null,
+        locationError: "Geolocation is not supported by this browser.",
+        mapUrl: "",
+      });
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const latitude = position.coords.latitude;
+        const longitude = position.coords.longitude;
+
+        updateReportLocation(id, {
+          latitude,
+          longitude,
+          locationError: "",
+          mapUrl: `https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=18/${latitude}/${longitude}`,
+        });
+      },
+      () => {
+        updateReportLocation(id, {
+          latitude: null,
+          longitude: null,
+          locationError: "Unable to retrieve location.",
+          mapUrl: "",
+        });
+      }
+    );
+  }
+
+  function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setPhotoFile(file);
+    setRemoveExistingPhoto(false);
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (typeof reader.result === "string") {
+        setPhotoPreview(reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+
+    if (!title.trim() || !description.trim()) {
+      alert("Please enter both title and description.");
+      return;
+    }
+
+    if (editingId !== null) {
+      const finalHasPhoto = removeExistingPhoto
+        ? Boolean(photoFile)
+        : photoFile
+        ? true
+        : existingHasPhoto;
+
+      const updatedReports = reports.map((report) =>
+        report.id === editingId
+          ? {
+              ...report,
+              title: title.trim(),
+              category,
+              description: description.trim(),
+              status,
+              hasPhoto: finalHasPhoto,
+              photo: photoFile
+                ? ""
+                : removeExistingPhoto
+                ? ""
+                : report.photo ?? "",
+            }
+          : report
+      );
+
+      setReports(updatedReports);
+
+      if (photoFile) {
+        await savePhoto(editingId, photoFile);
+      }
+
+      resetForm();
+    } else {
+      const newId = Date.now();
+
+      const newReport: Report = {
+        id: newId,
+        title: title.trim(),
+        category,
+        description: description.trim(),
+        status,
+        createdAt: new Date().toLocaleString(),
+        location: emptyLocation,
+        hasPhoto: Boolean(photoFile),
+        photo: "",
+      };
+
+      setReports((currentReports) => [newReport, ...currentReports]);
+
+      if (photoFile) {
+        await savePhoto(newId, photoFile);
+      }
+
+      getCurrentLocation(newId);
+      resetForm();
+    }
+  }
+
+  function deleteReport(id: number) {
+    const updatedReports = reports.filter((report) => report.id !== id);
+    setReports(updatedReports);
+
+    if (editingId === id) {
+      resetForm();
+    }
+  }
+
+  async function startEdit(report: Report) {
+    setTitle(report.title);
+    setCategory(report.category);
+    setDescription(report.description);
+    setStatus(report.status);
+    setEditingId(report.id);
+    setExistingHasPhoto(report.hasPhoto);
+    setRemoveExistingPhoto(false);
+    setPhotoFile(null);
+
+    if (report.photo) {
+      setPhotoPreview(report.photo);
+      return;
+    }
+
+    if (report.hasPhoto) {
+      const url = await getPhoto(report.id);
+      setPhotoPreview(url ?? "");
+    } else {
+      setPhotoPreview("");
+    }
+  }
+
+  function resetForm() {
+    setTitle("");
+    setCategory("Lighting");
+    setDescription("");
+    setStatus("Pending");
+    setPhotoFile(null);
+    setPhotoPreview("");
+    setExistingHasPhoto(false);
+    setRemoveExistingPhoto(false);
+    setEditingId(null);
+  }
+
+  function removePhoto() {
+    setPhotoFile(null);
+    setPhotoPreview("");
+    setRemoveExistingPhoto(true);
+  }
+
+  function getStatusClass(statusValue: ReportStatus) {
+    switch (statusValue) {
+      case "Pending":
+        return "status-badge status-pending";
+      case "In Progress":
+        return "status-badge status-progress";
+      case "Resolved":
+        return "status-badge status-resolved";
+      default:
+        return "status-badge";
+    }
+  }
+
+  const totalReports = reports.length;
+  const pendingCount = reports.filter((r) => r.status === "Pending").length;
+  const progressCount = reports.filter(
+    (r) => r.status === "In Progress"
+  ).length;
+  const resolvedCount = reports.filter((r) => r.status === "Resolved").length;
+
+  return (
+    <div className="app-shell">
+      <header className="topbar">
+        <div className="topbar-inner">
+          <div className="topbar-status-row">
+            <div
+              className={`network-status ${isOnline ? "online" : "offline"}`}
+            >
+              {isOnline ? "Online" : "Offline – reports will be saved locally"}
+            </div>
+
+            {installPromptEvent && !isInstalled && (
+              <button className="install-btn" onClick={handleInstallClick}>
+                Install App
+              </button>
+            )}
+
+            {isInstalled && (
+              <div className="installed-badge">App Installed</div>
+            )}
+          </div>
+
+          <div>
+            <p className="eyebrow">Campus maintenance reporting</p>
+            <h1>Campus Outdoor Inspection App</h1>
+            <p className="subtitle">
+              A simple mobile-friendly app for reporting outdoor maintenance and
+              safety issues on campus.
+            </p>
+          </div>
+        </div>
+      </header>
+
+      <main className="page">
+        <section className="form-panel">
+          <div className="panel-header">
+            <h2>{editingId !== null ? "Edit Report" : "New Report"}</h2>
+            <p>
+              {editingId !== null
+                ? "Update the selected report details below."
+                : "Create a new inspection or maintenance report."}
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="report-form">
+            <label>
+              Report Title
+              <input
+                type="text"
+                placeholder="e.g. Broken street light near library"
+                value={title}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setTitle(e.target.value)
+                }
+              />
+            </label>
+
+            <label>
+              Category
+              <select
+                value={category}
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                  setCategory(e.target.value)
+                }
+              >
+                <option value="Lighting">Lighting</option>
+                <option value="Waste">Waste</option>
+                <option value="Surface Damage">Surface Damage</option>
+                <option value="Signage">Signage</option>
+                <option value="Safety Hazard">Safety Hazard</option>
+                <option value="Furniture">Furniture</option>
+                <option value="Other">Other</option>
+              </select>
+            </label>
+
+            <label>
+              Description
+              <textarea
+                rows={5}
+                placeholder="Describe the issue in detail..."
+                value={description}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                  setDescription(e.target.value)
+                }
+              />
+            </label>
+
+            <label>
+              Status
+              <select
+                value={status}
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                  setStatus(e.target.value as ReportStatus)
+                }
+              >
+                <option value="Pending">Pending</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Resolved">Resolved</option>
+              </select>
+            </label>
+
+            <label>
+              Photo
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handlePhotoChange}
+              />
+            </label>
+
+            {photoPreview && (
+              <div className="photo-preview-box">
+                <img
+                  src={photoPreview}
+                  alt="Preview"
+                  className="photo-preview"
+                />
+                <button
+                  type="button"
+                  className="secondary-btn remove-photo-btn"
+                  onClick={removePhoto}
+                >
+                  Remove Photo
+                </button>
+              </div>
+            )}
+
+            <div className="form-actions">
+              <button type="submit" className="primary-btn">
+                {editingId !== null ? "Update Report" : "Add Report"}
+              </button>
+
+              {editingId !== null && (
+                <button
+                  type="button"
+                  className="secondary-btn"
+                  onClick={resetForm}
+                >
+                  Cancel
+                </button>
+              )}
+            </div>
+          </form>
+        </section>
+
+        <section className="content-panel">
+          <div className="stats-grid">
+            <article className="stat-card">
+              <span className="stat-label">Total Reports</span>
+              <strong className="stat-value">{totalReports}</strong>
+            </article>
+
+            <article className="stat-card">
+              <span className="stat-label">Pending</span>
+              <strong className="stat-value">{pendingCount}</strong>
+            </article>
+
+            <article className="stat-card">
+              <span className="stat-label">In Progress</span>
+              <strong className="stat-value">{progressCount}</strong>
+            </article>
+
+            <article className="stat-card">
+              <span className="stat-label">Resolved</span>
+              <strong className="stat-value">{resolvedCount}</strong>
+            </article>
+          </div>
+
+          <section className="list-panel">
+            <div className="panel-header list-header">
+              <div>
+                <h2>Report List</h2>
+                <p>Review and manage all submitted inspection reports.</p>
+              </div>
+            </div>
+
+            {reports.length === 0 ? (
+              <p className="empty-state">
+                No reports yet. Add your first report using the form on the
+                left.
+              </p>
+            ) : (
+              <div className="report-list">
+                {reports.map((report) => (
+                  <article key={report.id} className="report-card">
+                    <div className="report-top">
+                      <div className="report-title-wrap">
+                        <h3>{report.title}</h3>
+                        <p className="report-time">{report.createdAt}</p>
+                      </div>
+
+                      <span className={getStatusClass(report.status)}>
+                        {report.status}
+                      </span>
+                    </div>
+
+                    <div className="report-meta">
+                      <span className="meta-chip">{report.category}</span>
+                    </div>
+
+                    <p className="report-description">{report.description}</p>
+
+                    <ReportPhoto report={report} />
+
+                    <div className="location-block">
+                      <p className="location-title">Location</p>
+
+                      {report.location?.latitude !== null &&
+                      report.location?.latitude !== undefined &&
+                      report.location?.longitude !== null &&
+                      report.location?.longitude !== undefined ? (
+                        <>
+                          <p className="location-text">
+                            Latitude: {report.location.latitude.toFixed(5)}
+                          </p>
+                          <p className="location-text">
+                            Longitude: {report.location.longitude.toFixed(5)}
+                          </p>
+                          <a
+                            className="map-link"
+                            href={report.location.mapUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Open in map
+                          </a>
+                        </>
+                      ) : report.location?.locationError ? (
+                        <p className="location-error">
+                          {report.location.locationError}
+                        </p>
+                      ) : (
+                        <p className="location-text">
+                          Getting current location…
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="card-actions">
+                      <button
+                        className="edit-btn"
+                        onClick={() => startEdit(report)}
+                      >
+                        Edit
+                      </button>
+
+                      <button
+                        className="delete-btn"
+                        onClick={() => deleteReport(report.id)}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
+        </section>
+      </main>
+    </div>
+  );
+}
