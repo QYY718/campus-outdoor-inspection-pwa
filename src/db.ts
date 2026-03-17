@@ -4,7 +4,6 @@ export function openDB(): Promise<IDBDatabase> {
 
     request.onupgradeneeded = () => {
       const db = request.result;
-
       if (!db.objectStoreNames.contains("photos")) {
         db.createObjectStore("photos", { keyPath: "id" });
       }
@@ -22,7 +21,6 @@ export function openDB(): Promise<IDBDatabase> {
 
 export async function savePhoto(id: number, blob: Blob) {
   const db = await openDB();
-
   const tx = db.transaction("photos", "readwrite");
   const store = tx.objectStore("photos");
 
@@ -30,20 +28,23 @@ export async function savePhoto(id: number, blob: Blob) {
     id,
     blob,
   });
+
+  return new Promise<void>((resolve, reject) => {
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error);
+  });
 }
 
 export async function getPhoto(id: number): Promise<string | null> {
   const db = await openDB();
-
   const tx = db.transaction("photos", "readonly");
   const store = tx.objectStore("photos");
-
   const request = store.get(id);
 
   return new Promise((resolve) => {
     request.onsuccess = () => {
       const result = request.result;
-
       if (!result) {
         resolve(null);
         return;
@@ -54,5 +55,19 @@ export async function getPhoto(id: number): Promise<string | null> {
     };
 
     request.onerror = () => resolve(null);
+  });
+}
+
+export async function deletePhoto(id: number) {
+  const db = await openDB();
+  const tx = db.transaction("photos", "readwrite");
+  const store = tx.objectStore("photos");
+
+  store.delete(id);
+
+  return new Promise<void>((resolve, reject) => {
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error);
   });
 }
