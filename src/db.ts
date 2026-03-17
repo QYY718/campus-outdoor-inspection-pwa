@@ -56,3 +56,16 @@ export async function getPhoto(id: number): Promise<string | null> {
     request.onerror = () => resolve(null);
   });
 }
+export async function deletePhoto(id: number) {
+  const db = await openDB();
+  const tx = db.transaction("photos", "readwrite");
+  const store = tx.objectStore("photos");
+
+  store.delete(id);
+
+  return new Promise<void>((resolve, reject) => {
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error);
+  });
+}
