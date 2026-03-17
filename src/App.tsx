@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import "./styles.css";
-import { getPhoto, savePhoto } from "./db";
+import { getPhoto, savePhoto, deletePhoto } from "./db";
 
 type ReportStatus = "Pending" | "In Progress" | "Resolved";
 
@@ -135,6 +135,10 @@ export default function App() {
   }, [reports]);
 
   useEffect(() => {
+    const updateNetworkStatus = () => {
+      setIsOnline(navigator.onLine);
+    };
+
     function handleOnline() {
       setIsOnline(true);
     }
@@ -143,12 +147,18 @@ export default function App() {
       setIsOnline(false);
     }
 
+    updateNetworkStatus();
+
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
+    window.addEventListener("focus", updateNetworkStatus);
+    document.addEventListener("visibilitychange", updateNetworkStatus);
 
     return () => {
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
+      window.removeEventListener("focus", updateNetworkStatus);
+      document.removeEventListener("visibilitychange", updateNetworkStatus);
     };
   }, []);
 
@@ -268,16 +278,16 @@ export default function App() {
               description: description.trim(),
               status,
               hasPhoto: finalHasPhoto,
-              photo: photoFile
-                ? ""
-                : removeExistingPhoto
-                ? ""
-                : report.photo ?? "",
+              photo: "",
             }
           : report
       );
 
       setReports(updatedReports);
+
+      if (removeExistingPhoto && !photoFile) {
+        await deletePhoto(editingId);
+      }
 
       if (photoFile) {
         await savePhoto(editingId, photoFile);
@@ -310,9 +320,11 @@ export default function App() {
     }
   }
 
-  function deleteReport(id: number) {
+  async function deleteReport(id: number) {
     const updatedReports = reports.filter((report) => report.id !== id);
     setReports(updatedReports);
+
+    await deletePhoto(id);
 
     if (editingId === id) {
       resetForm();
@@ -388,7 +400,9 @@ export default function App() {
             <div
               className={`network-status ${isOnline ? "online" : "offline"}`}
             >
-              {isOnline ? "Online" : "Offline – reports will be saved locally"}
+              {isOnline
+                ? "🟢 Online"
+                : "🟡 Offline – reports will be saved locally"}
             </div>
 
             {installPromptEvent && !isInstalled && (
