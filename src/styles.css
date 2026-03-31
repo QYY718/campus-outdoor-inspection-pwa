@@ -73,6 +73,25 @@ textarea {
   font-size: 1rem;
 }
 
+.login-screen-modern {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+  background: linear-gradient(rgba(15, 23, 42, 0.42), rgba(15, 23, 42, 0.42)),
+    url("./assets/bg.jpg") center center / cover no-repeat;
+}
+
+.login-card-modern {
+  width: 100%;
+  max-width: 420px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 28px;
+  padding: 1.5rem;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.18);
+  backdrop-filter: blur(12px);
+}
 .network-status {
   margin-bottom: 10px;
   font-size: 13px;
