@@ -810,24 +810,27 @@ export default function App() {
                       <div className="report-top">
                         <div className="report-title-wrap">
                           <h3>{report.title}</h3>
-                          <div className="report-title-wrap">
-                            <h3>{report.title}</h3>
-                            <p className="report-time">{report.createdAt}</p>
-
-                            <button
-                              className="map-open-btn"
-                              onClick={() =>
-                                window.open(
-                                  `https://www.google.com/maps?q=${report.location?.latitude},${report.location?.longitude}`,
-                                  "_blank"
-                                )
-                              }
-                            >
-                              <span className="map-open-btn-icon">📍</span>
-                              Open in Google Maps
-                            </button>
-                          </div>
                           <p className="report-time">{report.createdAt}</p>
+
+                          <button
+                            className="map-open-btn"
+                            onClick={() => {
+                              const lat = report.location?.latitude;
+                              const lng = report.location?.longitude;
+
+                              if (lat != null && lng != null) {
+                                window.open(
+                                  `https://www.google.com/maps?q=${lat},${lng}`,
+                                  "_blank"
+                                );
+                              } else {
+                                alert("Location not available");
+                              }
+                            }}
+                          >
+                            <span className="map-open-btn-icon">📍</span>
+                            Open in Google Maps
+                          </button>
                         </div>
 
                         <span className={getStatusClass(report.status)}>
@@ -862,7 +865,7 @@ export default function App() {
                         report.location?.longitude !== undefined ? (
                           <>
                             <p className="location-text">
-                              Latitude: {report.location?.latitude.toFixed(5)}
+                              Latitude: {report.location.latitude.toFixed(5)}
                             </p>
                             <p className="location-text">
                               Longitude: {report.location.longitude.toFixed(5)}
