@@ -551,3 +551,34 @@ textarea {
   font-size: 0.9rem;
   font-weight: 700;
 }
+.map-open-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.55rem;
+  padding: 0.62rem 0.95rem;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #16a34a, #22c55e);
+  color: #ffffff;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(22, 163, 74, 0.18);
+  transition: transform 0.16s ease, box-shadow 0.16s ease, opacity 0.16s ease;
+}
+
+.map-open-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px rgba(22, 163, 74, 0.22);
+  opacity: 0.98;
+}
+
+.map-open-btn:active {
+  transform: translateY(0);
+}
+
+.map-open-btn-icon {
+  font-size: 0.95rem;
+  line-height: 1;
+}
