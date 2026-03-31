@@ -312,20 +312,34 @@ export default function App() {
           latitude,
           longitude,
           locationError: "",
-          mapUrl: `https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=18/${latitude}/${longitude}`,
+          mapUrl: `https://www.google.com/maps?q=${latitude},${longitude}`,
         });
       },
-      () => {
+      (error) => {
+        let message = "Unable to retrieve location.";
+
+        if (error.code === error.PERMISSION_DENIED) {
+          message = "Location permission was denied.";
+        } else if (error.code === error.POSITION_UNAVAILABLE) {
+          message = "Location information is unavailable.";
+        } else if (error.code === error.TIMEOUT) {
+          message = "Location request timed out.";
+        }
+
         updateReportLocation(id, {
           latitude: null,
           longitude: null,
-          locationError: "Unable to retrieve location.",
+          locationError: message,
           mapUrl: "",
         });
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
       }
     );
   }
-
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
