@@ -3,19 +3,19 @@
 }
 
 :root {
-  --bg: #f3f5f9;
+  --bg: #f0fdf4;
   --panel: #ffffff;
-  --panel-alt: #f8fafc;
-  --border: #e2e8f0;
+  --panel-alt: #f6fef8;
+  --border: #d1fae5;
   --text: #0f172a;
   --muted: #64748b;
-  --primary: #1d4ed8;
-  --primary-dark: #1e40af;
-  --edit: #0f766e;
-  --edit-dark: #115e59;
+  --primary: #16a34a;
+  --primary-dark: #15803d;
+  --edit: #15803d;
+  --edit-dark: #166534;
   --danger: #dc2626;
   --danger-dark: #b91c1c;
-  --shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+  --shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
   --radius-lg: 18px;
   --radius-md: 12px;
 }
@@ -23,8 +23,8 @@
 body {
   margin: 0;
   font-family: Inter, "Segoe UI", Arial, sans-serif;
-  background: var(--bg);
   color: var(--text);
+  background: var(--bg);
 }
 
 button,
@@ -39,8 +39,9 @@ textarea {
 }
 
 .topbar {
-  background: #ffffff;
+  background: rgba(255, 255, 255, 0.92);
   border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(8px);
 }
 
 .topbar-inner {
@@ -63,6 +64,7 @@ textarea {
   font-size: clamp(1.9rem, 3vw, 2.6rem);
   font-weight: 750;
   letter-spacing: -0.03em;
+  color: #14532d;
 }
 
 .subtitle {
@@ -78,8 +80,6 @@ textarea {
   display: grid;
   place-items: center;
   padding: 1.25rem;
-  background: linear-gradient(rgba(15, 23, 42, 0.42), rgba(15, 23, 42, 0.42)),
-    url("./assets/bg.jpg") center center / cover no-repeat;
 }
 
 .login-card-modern {
@@ -92,6 +92,7 @@ textarea {
   box-shadow: 0 12px 30px rgba(15, 23, 42, 0.18);
   backdrop-filter: blur(12px);
 }
+
 .network-status {
   margin-bottom: 10px;
   font-size: 13px;
@@ -124,10 +125,11 @@ textarea {
 .form-panel,
 .list-panel,
 .stat-card {
-  background: var(--panel);
+  background: rgba(255, 255, 255, 0.95);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow);
+  backdrop-filter: blur(6px);
 }
 
 .form-panel {
@@ -145,6 +147,7 @@ textarea {
   margin: 0;
   font-size: 1.2rem;
   font-weight: 750;
+  color: #14532d;
 }
 
 .panel-header p {
@@ -188,8 +191,8 @@ textarea {
 .report-form select:focus,
 .report-form textarea:focus {
   outline: none;
-  border-color: #93c5fd;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  border-color: #86efac;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15);
 }
 
 .form-actions {
@@ -219,21 +222,21 @@ textarea {
 }
 
 .primary-btn {
-  background: var(--primary);
+  background: linear-gradient(135deg, #16a34a, #22c55e);
   color: white;
 }
 
 .primary-btn:hover {
-  background: var(--primary-dark);
+  background: linear-gradient(135deg, #15803d, #16a34a);
 }
 
 .secondary-btn {
-  background: #e2e8f0;
-  color: #334155;
+  background: #f0fdf4;
+  color: #166534;
 }
 
 .secondary-btn:hover {
-  background: #cbd5e1;
+  background: #dcfce7;
 }
 
 .stats-grid {
@@ -256,7 +259,7 @@ textarea {
 .stat-value {
   font-size: 1.8rem;
   font-weight: 760;
-  color: var(--text);
+  color: #14532d;
 }
 
 .list-panel {
@@ -269,7 +272,7 @@ textarea {
 
 .empty-state {
   margin: 0.7rem 0 0;
-  border: 1px dashed #cbd5e1;
+  border: 1px dashed #bbf7d0;
   background: var(--panel-alt);
   border-radius: 14px;
   padding: 1rem;
@@ -291,8 +294,8 @@ textarea {
 }
 
 .report-card:hover {
-  border-color: #cbd5e1;
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+  border-color: #86efac;
+  box-shadow: 0 8px 20px rgba(22, 163, 74, 0.08);
 }
 
 .report-top {
@@ -307,6 +310,7 @@ textarea {
   margin: 0;
   font-size: 1.06rem;
   font-weight: 700;
+  color: #14532d;
 }
 
 .report-time {
@@ -324,8 +328,8 @@ textarea {
   align-items: center;
   border-radius: 999px;
   padding: 0.34rem 0.72rem;
-  background: #eff6ff;
-  color: #1d4ed8;
+  background: #dcfce7;
+  color: #166534;
   font-size: 0.82rem;
   font-weight: 650;
 }
@@ -383,7 +387,7 @@ textarea {
   margin: 0 0 0.45rem;
   font-size: 0.88rem;
   font-weight: 700;
-  color: #0f172a;
+  color: #14532d;
 }
 
 .location-text {
@@ -402,7 +406,7 @@ textarea {
 .map-link {
   display: inline-block;
   margin-top: 0.5rem;
-  color: #1d4ed8;
+  color: #15803d;
   font-size: 0.92rem;
   font-weight: 600;
   text-decoration: none;
@@ -454,13 +458,13 @@ textarea {
 }
 
 .status-progress {
-  background: #dbeafe;
-  color: #1d4ed8;
+  background: #dcfce7;
+  color: #166534;
 }
 
 .status-resolved {
-  background: #dcfce7;
-  color: #166534;
+  background: #bbf7d0;
+  color: #065f46;
 }
 
 @media (max-width: 980px) {
@@ -526,7 +530,7 @@ textarea {
   border: none;
   border-radius: 10px;
   padding: 0.62rem 0.95rem;
-  background: #1d4ed8;
+  background: linear-gradient(135deg, #16a34a, #22c55e);
   color: white;
   font-weight: 650;
   cursor: pointer;
@@ -534,7 +538,7 @@ textarea {
 }
 
 .install-btn:hover {
-  background: #1e40af;
+  background: linear-gradient(135deg, #15803d, #16a34a);
   transform: translateY(-1px);
 }
 
